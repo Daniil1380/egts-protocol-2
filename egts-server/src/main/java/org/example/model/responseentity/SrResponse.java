@@ -15,6 +15,8 @@ public class SrResponse implements BinaryData {
     private short confirmedRecordNumber;
     private byte recordStatus;
 
+    private final static int SIZE_OF_DATA = 3;
+
     public SrResponse() {
     }
 
@@ -50,7 +52,6 @@ public class SrResponse implements BinaryData {
 
     @Override
     public int length() {
-        var recBytes = this.encode();
-        return recBytes.length;
+        return SIZE_OF_DATA;
     }
 }

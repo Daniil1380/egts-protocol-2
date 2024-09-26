@@ -24,17 +24,17 @@ public class PtResponse implements BinaryData {
     private int processingResult;
     private BinaryData sdr;
 
+    private static final int SIZE_OF_DATA = 3;
+
     @Override
     public BinaryData decode(byte[] content) {
         var inputStream = new ByteArrayInputStream(content);
         var in = new BufferedInputStream(inputStream);
         try {
             responsePacketId = ByteBuffer.wrap(in.readNBytes(2)).order(ByteOrder.LITTLE_ENDIAN).getShort();
-            processingResult = in.readNBytes(1)[0];
-            if (in.available() > 0) {
-                sdr = new ServiceDataSet();
-                sdr.decode(in.readNBytes(in.available()));
-            }
+            processingResult = in.read();
+            sdr = new ServiceDataSet();
+            sdr.decode(in.readNBytes(in.available()));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -47,10 +47,8 @@ public class PtResponse implements BinaryData {
         try {
             bytesOut.write(ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putShort((short) responsePacketId).array());
             bytesOut.write(processingResult);
-            if (sdr != null) {
-                var sdrBytes = sdr.encode();
-                bytesOut.write(sdrBytes);
-            }
+            var sdrBytes = sdr.encode();
+            bytesOut.write(sdrBytes);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -59,7 +57,6 @@ public class PtResponse implements BinaryData {
 
     @Override
     public int length() {
-        var recBytes = this.encode();
-        return recBytes.length;
+        return SIZE_OF_DATA + sdr.length();
     }
 }

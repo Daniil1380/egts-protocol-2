@@ -122,7 +122,7 @@ public class Package implements BinaryData {
         try {
             byte[] sfrd = servicesFrameData.encode();
 
-            short frameDataLength = (short) sfrd.length;
+            short frameDataLength = (short) servicesFrameData.length();
             short packageIdentifierShort = (short) packageIdentifier;
 
             bytesOut.write(protocolVersion);

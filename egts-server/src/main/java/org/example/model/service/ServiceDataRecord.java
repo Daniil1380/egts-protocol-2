@@ -36,6 +36,8 @@ public class ServiceDataRecord implements BinaryData {
     private RecordDataSet recordDataSet;
 
     private final static Long TIMESTAMP_IN_2010 = 1262304000L;
+    private final static int SIZE_OF_DATA = 7;
+    private final static int SIZE_OF_ADDITIONAL_DATA = 4;
 
     public ServiceDataRecord(int recordNumber, ServiceType recipientServiceType, RecordDataSet recordDataSet, Instant now) {
         this.recordNumber = recordNumber;
@@ -109,6 +111,19 @@ public class ServiceDataRecord implements BinaryData {
 
     @Override
     public int length() {
-        return 0;
+        int sum = 0;
+        if (objectIdFieldExists) {
+            sum += SIZE_OF_ADDITIONAL_DATA;
+        }
+
+        if (eventIdFieldExists) {
+            sum += SIZE_OF_ADDITIONAL_DATA;
+        }
+
+        if (timeFieldExists) {
+            sum += SIZE_OF_ADDITIONAL_DATA;
+        }
+
+        return SIZE_OF_DATA + sum + recordDataSet.length();
     }
 }

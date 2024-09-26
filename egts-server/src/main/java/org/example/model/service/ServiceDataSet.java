@@ -18,6 +18,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+//TODO я тут еще не закончил
 public class ServiceDataSet implements BinaryData {
 
     private List<BinaryData> serviceDataRecords;
@@ -107,12 +108,9 @@ public class ServiceDataSet implements BinaryData {
 
     @Override
     public int length() {
-        var recBytes = this.encode();
-        System.out.println(recBytes.length);
-        System.out.println(serviceDataRecords.stream()
+        return serviceDataRecords.stream()
                 .map(BinaryData::length)
                 .reduce(Integer::sum)
-                .orElse(0));
-        return recBytes.length;
+                .orElse(0);
     }
 }

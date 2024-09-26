@@ -18,6 +18,8 @@ public class ResultCodeResponse implements BinaryData {
         this.resultCode = resultCode;
     }
 
+    private static final int SIZE_OF_DATA = 1;
+
     public ResultCodeResponse() {
     }
 
@@ -42,7 +44,6 @@ public class ResultCodeResponse implements BinaryData {
 
     @Override
     public int length() {
-        var recBytes = this.encode();
-        return recBytes.length;
+        return SIZE_OF_DATA;
     }
 }
