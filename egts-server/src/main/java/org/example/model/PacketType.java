@@ -10,7 +10,7 @@ public enum PacketType {
     EGTS_PT_RESPONSE(0),
     EGTS_PT_APPDATA(1);
 
-    private int id;
+    private final int id;
 
     PacketType(int id) {
         this.id = id;

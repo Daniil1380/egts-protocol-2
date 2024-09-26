@@ -1,8 +1,6 @@
-package org.example.model;
+package org.example.model.subrecord;
 
 import lombok.Getter;
-
-import java.util.Optional;
 
 @Getter
 public enum SubrecordType {
@@ -11,17 +9,9 @@ public enum SubrecordType {
     EGTS_SR_POS_DATA(16),
     EGTS_SR_RECORD_RESPONSE(0),
     RESULT_CODE(9),
-    EXT_POS_DATA(17),
-    AD_SENSORS_DATA(18),
-    STATE_DATA(21),
-    LIQUID_LEVEL_SE(27),
-    ABS_CNTR_DATA(25),
-    AUTH_INFO(7),
-    COUNTERS_DATA(19),
-    EGTS_PLUS_DATA_TYPE(15),
-    ABS_AN_SENS_DATA(24);
+    EXT_POS_DATA(17);
 
-    private Integer id;
+    private final Integer id;
 
     SubrecordType(Integer id) {
         this.id = id;

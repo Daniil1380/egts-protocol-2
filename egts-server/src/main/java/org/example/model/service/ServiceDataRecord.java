@@ -1,15 +1,16 @@
-package org.example.model;
+package org.example.model.service;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.example.model.BinaryData;
+import org.example.model.subrecord.RecordDataSet;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.time.Instant;
-import java.util.concurrent.TimeUnit;
 
 @Data
 @NoArgsConstructor

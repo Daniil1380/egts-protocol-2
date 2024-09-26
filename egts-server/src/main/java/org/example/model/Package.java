@@ -1,8 +1,16 @@
 package org.example.model;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.example.model.responseentity.PtResponse;
+import org.example.model.service.ServiceDataSet;
 
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -122,36 +130,26 @@ public class Package implements BinaryData {
         return this;
     }
 
-    // Encode кодирует струткуру в байтовую строку
+
     @Override
     public byte[] encode() {
         var bytesOut = new ByteArrayOutputStream();
         try {
-            bytesOut.write(protocolVersion);
-            bytesOut.write(securityKeyId);
-
-            var flagsBits = prefix + route + encryptionAlg + compression + priority;
-            var flags = Short.parseShort(flagsBits);
-            bytesOut.write(flags);
-
-            bytesOut.write(headerLength);
-
-            bytesOut.write(headerEncoding);
-
-            byte[] sfrd = new byte[0];
-            if (servicesFrameData != null) {
-                sfrd = servicesFrameData.encode();
-            }
+            byte[] sfrd = servicesFrameData.encode();
 
             short frameDataLength = (short) sfrd.length;
             short packageIdentifierShort = (short) packageIdentifier;
 
+
+            bytesOut.write(protocolVersion);
+            bytesOut.write(securityKeyId);
+            bytesOut.write(getFlags());
+            bytesOut.write(headerLength);
+            bytesOut.write(headerEncoding);
             bytesOut.write(ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putShort(frameDataLength).array());
             bytesOut.write(ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putShort(packageIdentifierShort).array());
             bytesOut.write(packetType.getId());
-
             bytesOut.write(calculateCrc8(bytesOut.toByteArray()));
-
             if (frameDataLength > 0) {
                 bytesOut.write(sfrd);
                 bytesOut.write(ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putShort((short) calculateCrc16(sfrd)).array());
@@ -161,6 +159,11 @@ public class Package implements BinaryData {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private byte getFlags() {
+        var flagsBits = prefix + route + encryptionAlg + compression + priority;
+        return Byte.parseByte(flagsBits);
     }
 
     @Override

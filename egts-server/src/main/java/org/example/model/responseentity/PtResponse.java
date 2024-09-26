@@ -1,9 +1,11 @@
-package org.example.model;
+package org.example.model.responseentity;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.example.model.BinaryData;
+import org.example.model.service.ServiceDataSet;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;

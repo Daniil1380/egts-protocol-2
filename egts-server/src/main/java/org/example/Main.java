@@ -1,32 +1,32 @@
 package org.example;
 
-import org.example.model.AuthData;
+import org.example.model.subrecord.AuthData;
 import org.example.model.Package;
 import org.example.model.PacketType;
-import org.example.model.PositionData;
-import org.example.model.PtResponse;
-import org.example.model.RecordData;
-import org.example.model.RecordDataSet;
-import org.example.model.ServiceDataRecord;
-import org.example.model.ServiceDataSet;
-import org.example.model.SrResponse;
-import org.example.model.SubrecordType;
+import org.example.model.subrecord.HemisphereType;
+import org.example.model.subrecord.PositionData;
+import org.example.model.responseentity.PtResponse;
+import org.example.model.subrecord.RecordData;
+import org.example.model.subrecord.RecordDataSet;
+import org.example.model.service.ServiceDataRecord;
+import org.example.model.service.ServiceDataSet;
+import org.example.model.responseentity.SrResponse;
+import org.example.model.subrecord.SubrecordType;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.List;
 
-import static org.example.model.ServiceType.EGTS_AUTH_SERVICE;
-import static org.example.model.ServiceType.EGTS_TELEDATA_SERVICE;
+import static org.example.model.service.ServiceType.EGTS_AUTH_SERVICE;
+import static org.example.model.service.ServiceType.EGTS_TELEDATA_SERVICE;
 
 public class Main {
 
     public static void main(String[] args) throws IOException {
-        AuthData authData = new AuthData(0, 3016);
+        AuthData authData = new AuthData(3016);
         RecordData recordData = new RecordData(authData, SubrecordType.EGTS_SR_DISPATCHER_IDENTITY);
 
         RecordDataSet recordDataSet = new RecordDataSet();
@@ -52,6 +52,7 @@ public class Main {
         Package pa0 = new Package(1, PacketType.EGTS_PT_RESPONSE, ptResponse);
 
         Socket socket = new Socket("data.rnis.mos.ru", 4050);
+        //Socket socket = new Socket("localhost", 9090);
         byte[] array = pa.encode();
         byte[] array0 = pa0.encode();
 
@@ -83,7 +84,7 @@ public class Main {
 
 
         for (int i = 0; i < 9; i++) {
-            PositionData positionData = new PositionData(Instant.now(), 50, 51, "0", "0", "1", 5.6, 300,0);
+            PositionData positionData = new PositionData(Instant.now(), 50, 51, HemisphereType.NORTH, HemisphereType.EAST, true, 5.6, 300,0);
             RecordData recordDataPosition = new RecordData(positionData, SubrecordType.EGTS_SR_POS_DATA);
 
             RecordDataSet recordDataSetPosition = new RecordDataSet();

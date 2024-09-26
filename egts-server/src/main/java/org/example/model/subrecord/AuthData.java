@@ -1,6 +1,7 @@
-package org.example.model;
+package org.example.model.subrecord;
 
 import lombok.Data;
+import org.example.model.BinaryData;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -9,14 +10,15 @@ import java.nio.ByteOrder;
 
 @Data
 public class AuthData implements BinaryData {
-    private int dispatcherType;
+
+    private byte dispatcherType;
     private int dispatcherId;
 
-    public AuthData() {
-    }
+    private final static byte ZERO_BYTE = 0;
+    private final static byte SIZE_OF_DATA = 5;
 
-    public AuthData(int dispatcherType, int dispatcherId) {
-        this.dispatcherType = dispatcherType;
+    public AuthData(int dispatcherId) {
+        this.dispatcherType = ZERO_BYTE;
         this.dispatcherId = dispatcherId;
     }
 
@@ -29,8 +31,7 @@ public class AuthData implements BinaryData {
     public byte[] encode() {
         try (ByteArrayOutputStream bytesOut = new ByteArrayOutputStream()) {
 
-            byte dispatcherTypeByte = (byte) dispatcherType;
-            bytesOut.write(dispatcherTypeByte);
+            bytesOut.write(dispatcherType);
             bytesOut.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(dispatcherId).array());
 
             return bytesOut.toByteArray();
@@ -41,6 +42,6 @@ public class AuthData implements BinaryData {
 
     @Override
     public int length() {
-        return 5;
+        return SIZE_OF_DATA;
     }
 }

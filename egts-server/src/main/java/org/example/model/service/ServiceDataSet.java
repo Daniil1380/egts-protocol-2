@@ -1,8 +1,10 @@
-package org.example.model;
+package org.example.model.service;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.example.model.BinaryData;
+import org.example.model.subrecord.RecordDataSet;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;

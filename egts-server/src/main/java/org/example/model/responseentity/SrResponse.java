@@ -1,13 +1,13 @@
-package org.example.model;
+package org.example.model.responseentity;
 
 import lombok.Data;
+import org.example.model.BinaryData;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.Arrays;
 
 @Data
 public class SrResponse implements BinaryData {

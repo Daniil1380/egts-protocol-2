@@ -1,8 +1,6 @@
-package org.example.model;
+package org.example.model.service;
 
 import lombok.Getter;
-
-import java.util.Optional;
 
 @Getter
 public enum ServiceType {
