@@ -4,16 +4,16 @@ import lombok.Getter;
 
 @Getter
 public enum ServiceType {
-    EGTS_AUTH_SERVICE((byte) 1),
-    EGTS_TELEDATA_SERVICE ((byte) 2);
+    EGTS_AUTH_SERVICE(1),
+    EGTS_TELEDATA_SERVICE (2);
 
-    private byte id;
+    private int id;
 
-    ServiceType(byte id) {
+    ServiceType(int id) {
         this.id = id;
     }
 
-    public static ServiceType fromId(byte id) {
+    public static ServiceType fromId(int id) {
         for (ServiceType value : ServiceType.values()) {
             if (value.getId() == id ) {
                 return value;

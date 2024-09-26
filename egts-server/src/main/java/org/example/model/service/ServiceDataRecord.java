@@ -12,6 +12,8 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.time.Instant;
 
+import static org.example.util.BooleanUtil.getStringFromBool;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -19,13 +21,13 @@ public class ServiceDataRecord implements BinaryData {
 
     private int recordLength;
     private int recordNumber;
-    private String sourceServiceOnDevice;
-    private String recipientServiceOnDevice;
-    private String group;
-    private String recordProcessingPriority;
-    private String timeFieldExists;
-    private String eventIdFieldExists;
-    private String objectIdFieldExists;
+    private boolean sourceServiceOnDevice;
+    private boolean recipientServiceOnDevice;
+    private boolean group;
+    private boolean recordProcessingPriority;
+    private boolean timeFieldExists;
+    private boolean eventIdFieldExists;
+    private boolean objectIdFieldExists;
     private int objectIdentifier;
     private int eventIdentifier;
     private int time;
@@ -33,20 +35,18 @@ public class ServiceDataRecord implements BinaryData {
     private ServiceType recipientServiceType;
     private RecordDataSet recordDataSet;
 
-    private final static String NOT_EXISTS = "0";
-    private final static String EXISTS = "1";
     private final static Long TIMESTAMP_IN_2010 = 1262304000L;
 
     public ServiceDataRecord(int recordNumber, ServiceType recipientServiceType, RecordDataSet recordDataSet, Instant now) {
         this.recordNumber = recordNumber;
-        this.sourceServiceOnDevice = NOT_EXISTS;
-        this.recipientServiceOnDevice = NOT_EXISTS;
-        this.group = NOT_EXISTS;
-        this.recordProcessingPriority = NOT_EXISTS;
-        this.timeFieldExists = NOT_EXISTS;
+        this.sourceServiceOnDevice = false;
+        this.recipientServiceOnDevice = false;
+        this.group = false;
+        this.recordProcessingPriority = false;
+        this.timeFieldExists = false;
         this.time = (int) (now.getEpochSecond() - TIMESTAMP_IN_2010);
-        this.eventIdFieldExists = NOT_EXISTS;
-        this.objectIdFieldExists = NOT_EXISTS;
+        this.eventIdFieldExists = false;
+        this.objectIdFieldExists = false;
         this.sourceServiceType = recipientServiceType;
         this.recipientServiceType = recipientServiceType;
         this.recordDataSet = recordDataSet;
@@ -71,20 +71,18 @@ public class ServiceDataRecord implements BinaryData {
                 bytesOut.write(ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putShort(recordNumberShort).array());
 
                 // составной байт
-                var flagBits = sourceServiceOnDevice + recipientServiceOnDevice + group
-                        + recordProcessingPriority + timeFieldExists + objectIdFieldExists;
-                var flags = Integer.parseInt(flagBits, 2);
-                bytesOut.write(flags);
+                var flagBits = calculateFlags();
+                bytesOut.write(flagBits);
 
-                if (objectIdFieldExists.equals("1")) {
+                if (objectIdFieldExists) {
                     bytesOut.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(objectIdentifier).array());
                 }
 
-                if (eventIdFieldExists.equals("1")) {
+                if (eventIdFieldExists) {
                     bytesOut.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(eventIdentifier).array());
                 }
 
-                if (timeFieldExists.equals("1")) {
+                if (timeFieldExists) {
                     bytesOut.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(time).array());
 
                 }
@@ -97,6 +95,16 @@ public class ServiceDataRecord implements BinaryData {
                 throw new RuntimeException(e);
             }
         return bytesOut.toByteArray();
+    }
+
+    private byte calculateFlags() {
+        var flagsBits = getStringFromBool(sourceServiceOnDevice)
+                + getStringFromBool(recipientServiceOnDevice)
+                + getStringFromBool(group)
+                + getStringFromBool(recordProcessingPriority)
+                + getStringFromBool(timeFieldExists)
+                + getStringFromBool(objectIdFieldExists);
+        return Byte.parseByte(flagsBits);
     }
 
     @Override

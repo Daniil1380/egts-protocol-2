@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+import static org.example.util.BooleanUtil.getStringFromBool;
 import static org.example.util.CrcUtil.calculateCrc16;
 import static org.example.util.CrcUtil.calculateCrc8;
 
@@ -25,14 +26,14 @@ public class Package implements BinaryData {
 
     private int protocolVersion;
     private int securityKeyId;
-    private String prefix;
-    private String route;
-    private String encryptionAlg;
-    private String compression;
-    private String priority;
+    private boolean prefix;
+    private boolean route;
+    private boolean encryptionAlg;
+    private boolean compression;
+    private boolean priority;
     private int headerLength;
     private int headerEncoding;
-    private int frameDataLength;
+    private short frameDataLength;
     private int packageIdentifier;
     private PacketType packetType;
     private int peerAddress;
@@ -42,92 +43,76 @@ public class Package implements BinaryData {
     private BinaryData servicesFrameData;
     private int servicesFrameDataCheckSum;
 
-    private static final int PROTOCOL_VERSION = 1;
-    private static final int SECURITY_KEY_ID = 0;
-    private static final int HEADER_LENGTH = 11;
-    private static final int HEADER_ENCODING = 0;
-
-    private static final String ZERO_STRING = "0";
+    private static final byte PROTOCOL_VERSION = 1;
+    private static final byte NONE = 0;
+    private static final byte HEADER_LENGTH = 11;
 
     public Package(int packageIdentifier, PacketType packetType, BinaryData servicesFrameData) {
         this.protocolVersion = PROTOCOL_VERSION;
-        this.securityKeyId = SECURITY_KEY_ID;
-        this.prefix = ZERO_STRING;
-        this.route = ZERO_STRING;
-        this.encryptionAlg = ZERO_STRING;
-        this.compression = ZERO_STRING;
-        this.priority = ZERO_STRING;
+        this.securityKeyId = NONE;
+        this.prefix = false;
+        this.route = false;
+        this.encryptionAlg = false;
+        this.compression = false;
+        this.priority = false;
         this.headerLength = HEADER_LENGTH;
-        this.headerEncoding = HEADER_ENCODING;
+        this.headerEncoding = NONE;
         this.packageIdentifier = packageIdentifier;
         this.packetType = packetType;
         this.servicesFrameData = servicesFrameData;
     }
 
-    // Decode разбирает набор байт в структуру пакета
     @Override
     public BinaryData decode(byte[] content) {
         var inputStream = new ByteArrayInputStream(content);
         var in = new BufferedInputStream(inputStream);
         try {
-            protocolVersion = Byte.toUnsignedInt(in.readNBytes(1)[0]);
-            securityKeyId = Byte.toUnsignedInt(in.readNBytes(1)[0]);
+            protocolVersion = in.read();
+            securityKeyId = in.read();
+            decodeFlags(in.read());
+            headerLength = in.read();
+            headerEncoding = in.read();
 
-            var flag = Integer.toBinaryString(in.read());
-            if (flag.length() < 8) {
-                flag = "0".repeat(8 - flag.length()) +
-                        flag;
+            frameDataLength = ByteBuffer.wrap(in.readNBytes(2)).order(ByteOrder.LITTLE_ENDIAN).getShort();
+            packageIdentifier = ByteBuffer.wrap(in.readNBytes(2)).order(ByteOrder.LITTLE_ENDIAN).getShort();
+
+            packetType = PacketType.fromId(in.read());
+
+            if (route) {
+                peerAddress = ByteBuffer.wrap(in.readNBytes(2)).order(ByteOrder.LITTLE_ENDIAN).getShort();
+                recipientAddress = ByteBuffer.wrap(in.readNBytes(2)).order(ByteOrder.LITTLE_ENDIAN).getShort();
+                timeToLive = in.read();
             }
 
-            prefix = String.valueOf(flag.charAt(0)) + flag.charAt(1);        // flags << 7, flags << 6
-            route = String.valueOf(flag.charAt(2));                   // flags << 5
-            encryptionAlg = String.valueOf(flag.charAt(3)) + flag.charAt(4); // flags << 4, flags << 3
-            compression = String.valueOf(flag.charAt(5));             // flags << 2
-            priority = String.valueOf(flag.charAt(6)) + flag.charAt(7);                // flags << 1, flags << 0
-
-            headerLength = Byte.toUnsignedInt(in.readNBytes(1)[0]);
-            headerEncoding = Byte.toUnsignedInt(in.readNBytes(1)[0]);
-
-
-            frameDataLength = ByteBuffer.wrap(in.readNBytes(2))
-                    .order(ByteOrder.LITTLE_ENDIAN).getShort();
-            packageIdentifier = ByteBuffer.wrap(in.readNBytes(2))
-                    .order(ByteOrder.LITTLE_ENDIAN).getShort();
-
-            packetType = PacketType.fromId((Byte.toUnsignedInt(in.readNBytes(1)[0])));
-
-            if (route.equals("1")) {
-                peerAddress = ByteBuffer.wrap(in.readNBytes(2))
-                        .order(ByteOrder.LITTLE_ENDIAN).getShort();
-                recipientAddress = ByteBuffer.wrap(in.readNBytes(2))
-                        .order(ByteOrder.LITTLE_ENDIAN).getShort();
-                timeToLive = Byte.toUnsignedInt(in.readNBytes(1)[0]);
-            }
-
-            headerCheckSum = Byte.toUnsignedInt(in.readNBytes(1)[0]);
+            headerCheckSum = in.read();
 
             var dataFrameBytes = in.readNBytes(frameDataLength);
-            switch (packetType) {
-                case EGTS_PT_RESPONSE -> servicesFrameData = new PtResponse();
-                case EGTS_PT_APPDATA -> servicesFrameData = new ServiceDataSet();
-                default -> throw new RuntimeException("Unknown package type: " + packetType);
-            }
-            servicesFrameData.decode(dataFrameBytes);
+            decodeService(dataFrameBytes);
 
             var crcBytes = in.readNBytes(2);
-            servicesFrameDataCheckSum = ByteBuffer.wrap(crcBytes)
-                    .order(ByteOrder.LITTLE_ENDIAN).getShort();
-
-            byte[] data = new byte[frameDataLength];
-            int idx = 0;
-            for (int i = headerLength; i < headerLength + frameDataLength; i++) {
-                data[idx++] = content[i];
-            }
+            servicesFrameDataCheckSum = ByteBuffer.wrap(crcBytes).order(ByteOrder.LITTLE_ENDIAN).getShort();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
 
         return this;
+    }
+
+    private void decodeFlags(int flag) {
+        prefix = (flag & 0b11000000) == 0b11000000;
+        route = (flag & 0b00100000) == 0b00100000;
+        encryptionAlg = (flag & 0b00011000) == 0b00011000;
+        compression = (flag & 0b00000100) == 0b00000100;
+        priority = (flag & 0b00000011) == 0b00000011;
+    }
+
+    private void decodeService(byte[] dataFrameBytes) {
+        switch (packetType) {
+            case EGTS_PT_RESPONSE -> servicesFrameData = new PtResponse();
+            case EGTS_PT_APPDATA -> servicesFrameData = new ServiceDataSet();
+            default -> throw new RuntimeException("Unknown package type: " + packetType);
+        }
+        servicesFrameData.decode(dataFrameBytes);
     }
 
 
@@ -140,16 +125,16 @@ public class Package implements BinaryData {
             short frameDataLength = (short) sfrd.length;
             short packageIdentifierShort = (short) packageIdentifier;
 
-
             bytesOut.write(protocolVersion);
             bytesOut.write(securityKeyId);
-            bytesOut.write(getFlags());
+            bytesOut.write(calculateFlags());
             bytesOut.write(headerLength);
             bytesOut.write(headerEncoding);
             bytesOut.write(ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putShort(frameDataLength).array());
             bytesOut.write(ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putShort(packageIdentifierShort).array());
             bytesOut.write(packetType.getId());
             bytesOut.write(calculateCrc8(bytesOut.toByteArray()));
+
             if (frameDataLength > 0) {
                 bytesOut.write(sfrd);
                 bytesOut.write(ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putShort((short) calculateCrc16(sfrd)).array());
@@ -161,8 +146,12 @@ public class Package implements BinaryData {
         }
     }
 
-    private byte getFlags() {
-        var flagsBits = prefix + route + encryptionAlg + compression + priority;
+    private byte calculateFlags() {
+        var flagsBits = getStringFromBool(prefix)
+                + getStringFromBool(route)
+                + getStringFromBool(encryptionAlg)
+                + getStringFromBool(compression)
+                + getStringFromBool(priority);
         return Byte.parseByte(flagsBits);
     }
 

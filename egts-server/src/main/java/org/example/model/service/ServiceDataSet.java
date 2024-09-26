@@ -44,32 +44,29 @@ public class ServiceDataSet implements BinaryData {
                         .order(ByteOrder.LITTLE_ENDIAN).getShort();
                 sdr.setRecordNumber(recordNumber);
 
-                var flags = Integer.toBinaryString(in.read());
-                if (flags.length() < 8) {
-                    flags = "0".repeat(8 - flags.length()) +
-                            flags;
-                }
-                sdr.setSourceServiceOnDevice(String.valueOf(flags.charAt(0)));
-                sdr.setRecipientServiceOnDevice(String.valueOf(flags.charAt(1)));
-                sdr.setGroup(String.valueOf(flags.charAt(2)));
-                sdr.setRecordProcessingPriority(String.valueOf(flags.charAt(3)) + flags.charAt(4));
-                sdr.setTimeFieldExists(String.valueOf(flags.charAt(5)));
-                sdr.setEventIdFieldExists(String.valueOf(flags.charAt(6)));
-                sdr.setObjectIdFieldExists(String.valueOf(flags.charAt(7)));
+                var flags = in.read();
 
-                if (sdr.getObjectIdFieldExists().equals("1")) {
+                sdr.setSourceServiceOnDevice((flags & 0b10000000) == 0b10000000);
+                sdr.setRecipientServiceOnDevice((flags & 0b01000000) == 0b01000000);
+                sdr.setGroup((flags & 0b00100000) == 0b00100000);
+                sdr.setRecordProcessingPriority((flags & 0b00011000) == 0b00011000);
+                sdr.setTimeFieldExists((flags & 0b00000100) == 0b00000100);
+                sdr.setEventIdFieldExists((flags & 0b00000010) == 0b00000010);
+                sdr.setObjectIdFieldExists((flags & 0b00000001) == 0b00000001);
+
+                if (sdr.isObjectIdFieldExists()) {
                     var objectIdentifier = ByteBuffer.wrap(in.readNBytes(4))
                             .order(ByteOrder.LITTLE_ENDIAN).getInt();
                     sdr.setObjectIdentifier(objectIdentifier);
                 }
 
-                if (sdr.getEventIdFieldExists().equals("1")) {
+                if (sdr.isEventIdFieldExists()) {
                     var eventIdentifier = ByteBuffer.wrap(in.readNBytes(4))
                             .order(ByteOrder.LITTLE_ENDIAN).getInt();
                     sdr.setEventIdentifier(eventIdentifier);
                 }
 
-                if (sdr.getTimeFieldExists().equals("1")) {
+                if (sdr.isTimeFieldExists()) {
                     var time = ByteBuffer.wrap(in.readNBytes(4)).order(ByteOrder.LITTLE_ENDIAN).getInt();
                     sdr.setTime(time);
                 }
@@ -79,7 +76,6 @@ public class ServiceDataSet implements BinaryData {
 
                 serviceDataRecords.add(sdr);
 
-                // ? ? ?
                 if (in.available() != 0) {
                     var rds = new RecordDataSet();
                     var rdsBytes = ByteBuffer.wrap(in.readNBytes(sdr.getRecordLength()))
@@ -93,6 +89,8 @@ public class ServiceDataSet implements BinaryData {
         }
         return this;
     }
+
+
 
     @Override
     public byte[] encode() {
@@ -110,6 +108,11 @@ public class ServiceDataSet implements BinaryData {
     @Override
     public int length() {
         var recBytes = this.encode();
+        System.out.println(recBytes.length);
+        System.out.println(serviceDataRecords.stream()
+                .map(BinaryData::length)
+                .reduce(Integer::sum)
+                .orElse(0));
         return recBytes.length;
     }
 }
