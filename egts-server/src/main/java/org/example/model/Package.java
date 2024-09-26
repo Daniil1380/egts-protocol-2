@@ -26,13 +26,35 @@ public class Package implements BinaryData {
     private int headerEncoding;
     private int frameDataLength;
     private int packageIdentifier;
-    private int packetType;
+    private PacketType packetType;
     private int peerAddress;
     private int recipientAddress;
     private int timeToLive;
     private int headerCheckSum;
     private BinaryData servicesFrameData;
     private int servicesFrameDataCheckSum;
+
+    private static final int PROTOCOL_VERSION = 1;
+    private static final int SECURITY_KEY_ID = 0;
+    private static final int HEADER_LENGTH = 11;
+    private static final int HEADER_ENCODING = 0;
+
+    private static final String ZERO_STRING = "0";
+
+    public Package(int packageIdentifier, PacketType packetType, BinaryData servicesFrameData) {
+        this.protocolVersion = PROTOCOL_VERSION;
+        this.securityKeyId = SECURITY_KEY_ID;
+        this.prefix = ZERO_STRING;
+        this.route = ZERO_STRING;
+        this.encryptionAlg = ZERO_STRING;
+        this.compression = ZERO_STRING;
+        this.priority = ZERO_STRING;
+        this.headerLength = HEADER_LENGTH;
+        this.headerEncoding = HEADER_ENCODING;
+        this.packageIdentifier = packageIdentifier;
+        this.packetType = packetType;
+        this.servicesFrameData = servicesFrameData;
+    }
 
     // Decode разбирает набор байт в структуру пакета
     @Override
@@ -64,7 +86,7 @@ public class Package implements BinaryData {
             packageIdentifier = ByteBuffer.wrap(in.readNBytes(2))
                     .order(ByteOrder.LITTLE_ENDIAN).getShort();
 
-            packetType = Byte.toUnsignedInt(in.readNBytes(1)[0]);
+            packetType = PacketType.fromId((Byte.toUnsignedInt(in.readNBytes(1)[0])));
 
             if (route.equals("1")) {
                 peerAddress = ByteBuffer.wrap(in.readNBytes(2))
@@ -77,10 +99,9 @@ public class Package implements BinaryData {
             headerCheckSum = Byte.toUnsignedInt(in.readNBytes(1)[0]);
 
             var dataFrameBytes = in.readNBytes(frameDataLength);
-            BinaryData servicesFrameData;
             switch (packetType) {
-                case 0 -> servicesFrameData = new PtResponse();
-                case 1 -> servicesFrameData = new ServiceDataSet();
+                case EGTS_PT_RESPONSE -> servicesFrameData = new PtResponse();
+                case EGTS_PT_APPDATA -> servicesFrameData = new ServiceDataSet();
                 default -> throw new RuntimeException("Unknown package type: " + packetType);
             }
             servicesFrameData.decode(dataFrameBytes);
@@ -93,9 +114,6 @@ public class Package implements BinaryData {
             int idx = 0;
             for (int i = headerLength; i < headerLength + frameDataLength; i++) {
                 data[idx++] = content[i];
-            }
-            if (servicesFrameDataCheckSum != calculateCrc16(data)) {
-                throw new RuntimeException("Invalid part of package");
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -116,12 +134,6 @@ public class Package implements BinaryData {
             var flags = Short.parseShort(flagsBits);
             bytesOut.write(flags);
 
-            if (headerLength == 0) {
-                headerLength = 1;
-                if (route.equals("1")) {
-                    headerLength += 5;
-                }
-            }
             bytesOut.write(headerLength);
 
             bytesOut.write(headerEncoding);
@@ -130,23 +142,19 @@ public class Package implements BinaryData {
             if (servicesFrameData != null) {
                 sfrd = servicesFrameData.encode();
             }
-            frameDataLength = (short) sfrd.length;
 
-            bytesOut.write(ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putInt(frameDataLength).array());
-            bytesOut.write(ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putInt(packageIdentifier).array());
-            bytesOut.write(packetType);
+            short frameDataLength = (short) sfrd.length;
+            short packageIdentifierShort = (short) packageIdentifier;
 
-            if (route.equals("1")) {
-                bytesOut.write(ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putInt(peerAddress).array());
-                bytesOut.write(ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putInt(recipientAddress).array());
-                bytesOut.write(timeToLive);
-            }
+            bytesOut.write(ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putShort(frameDataLength).array());
+            bytesOut.write(ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putShort(packageIdentifierShort).array());
+            bytesOut.write(packetType.getId());
 
             bytesOut.write(calculateCrc8(bytesOut.toByteArray()));
 
             if (frameDataLength > 0) {
                 bytesOut.write(sfrd);
-                bytesOut.write(ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putInt(calculateCrc16(sfrd)).array());
+                bytesOut.write(ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putShort((short) calculateCrc16(sfrd)).array());
             }
 
             return bytesOut.toByteArray();

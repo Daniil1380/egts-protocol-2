@@ -6,9 +6,10 @@ import java.util.Optional;
 
 @Getter
 public enum SubrecordType {
-    POS_Data(16),
     TERM_IDENTITY(1),
-    RESPONSE(0),
+    EGTS_SR_DISPATCHER_IDENTITY(5),
+    EGTS_SR_POS_DATA(16),
+    EGTS_SR_RECORD_RESPONSE(0),
     RESULT_CODE(9),
     EXT_POS_DATA(17),
     AD_SENSORS_DATA(18),
@@ -26,12 +27,12 @@ public enum SubrecordType {
         this.id = id;
     }
 
-    public static Optional<SubrecordType> fromId(Integer id) {
+    public static SubrecordType fromId(Integer id) {
         for (SubrecordType value : SubrecordType.values()) {
             if (value.getId().equals(id)) {
-                return Optional.of(value);
+                return value;
             }
         }
-        return Optional.empty();
+        return null;
     }
 }

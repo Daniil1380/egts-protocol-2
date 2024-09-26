@@ -27,7 +27,7 @@ public class PtResponse implements BinaryData {
         var inputStream = new ByteArrayInputStream(content);
         var in = new BufferedInputStream(inputStream);
         try {
-            responsePacketId = ByteBuffer.wrap(in.readNBytes(2)).order(ByteOrder.LITTLE_ENDIAN).getInt();
+            responsePacketId = ByteBuffer.wrap(in.readNBytes(2)).order(ByteOrder.LITTLE_ENDIAN).getShort();
             processingResult = in.readNBytes(1)[0];
             if (in.available() > 0) {
                 sdr = new ServiceDataSet();
@@ -43,7 +43,7 @@ public class PtResponse implements BinaryData {
     public byte[] encode() {
         var bytesOut = new ByteArrayOutputStream();
         try {
-            bytesOut.write(ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putInt(responsePacketId).array());
+            bytesOut.write(ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putShort((short) responsePacketId).array());
             bytesOut.write(processingResult);
             if (sdr != null) {
                 var sdrBytes = sdr.encode();

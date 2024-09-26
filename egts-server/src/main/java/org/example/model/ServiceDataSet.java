@@ -10,6 +10,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -17,10 +18,11 @@ import java.util.List;
 @NoArgsConstructor
 public class ServiceDataSet implements BinaryData {
 
-    private List<ServiceDataRecord> serviceDataRecords;
+    private List<BinaryData> serviceDataRecords;
 
     @Override
     public BinaryData decode(byte[] serviceDS) {
+        serviceDataRecords = new ArrayList<>();
         var inputStream = new ByteArrayInputStream(serviceDS);
         var in = new BufferedInputStream(inputStream);
         while (true) {
@@ -33,11 +35,11 @@ public class ServiceDataSet implements BinaryData {
             try {
                 var sdr = new ServiceDataRecord();
                 var recordLength = ByteBuffer.wrap(in.readNBytes(2))
-                        .order(ByteOrder.LITTLE_ENDIAN).getInt();
+                        .order(ByteOrder.LITTLE_ENDIAN).getShort();
                 sdr.setRecordLength(recordLength);
 
                 var recordNumber = ByteBuffer.wrap(in.readNBytes(2))
-                        .order(ByteOrder.LITTLE_ENDIAN).getInt();
+                        .order(ByteOrder.LITTLE_ENDIAN).getShort();
                 sdr.setRecordNumber(recordNumber);
 
                 var flags = Integer.toBinaryString(in.read());
@@ -70,8 +72,10 @@ public class ServiceDataSet implements BinaryData {
                     sdr.setTime(time);
                 }
 
-                sdr.setRecipientServiceType(in.readNBytes(1)[0]);
-                sdr.setRecipientServiceType(in.readNBytes(1)[0]);
+                sdr.setRecipientServiceType(ServiceType.fromId(in.readNBytes(1)[0]));
+                sdr.setRecipientServiceType(ServiceType.fromId(in.readNBytes(1)[0]));
+
+                serviceDataRecords.add(sdr);
 
                 // ? ? ?
                 if (in.available() != 0) {
@@ -91,40 +95,9 @@ public class ServiceDataSet implements BinaryData {
     @Override
     public byte[] encode() {
         var bytesOut = new ByteArrayOutputStream();
-        for (ServiceDataRecord sdr : serviceDataRecords) {
-            var rd = sdr.getRecordDataSet().encode();
-
-            if (sdr.getRecordLength() == 0) {
-                sdr.setRecordLength(rd.length);
-            }
-
+        for (BinaryData sdr : serviceDataRecords) {
             try {
-                bytesOut.write(ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putInt(sdr.getRecordLength()).array());
-                bytesOut.write(ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putInt(sdr.getRecordNumber()).array());
-
-                // составной байт
-                var flagBits = sdr.getSourceServiceOnDevice() + sdr.getRecipientServiceOnDevice() + sdr.getGroup()
-                        + sdr.getRecordProcessingPriority() + sdr.getTimeFieldExists() + sdr.getObjectIdFieldExists();
-                var flags = Integer.parseInt(flagBits, 2);
-                bytesOut.write(flags);
-
-                if (sdr.getObjectIdFieldExists().equals("1")) {
-                    bytesOut.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(sdr.getObjectIdentifier()).array());
-                }
-
-                if (sdr.getEventIdFieldExists().equals("1")) {
-                    bytesOut.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(sdr.getEventIdentifier()).array());
-                }
-
-                if (sdr.getTimeFieldExists().equals("1")) {
-                    bytesOut.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(sdr.getTime()).array());
-
-                }
-
-                bytesOut.write(sdr.getSourceServiceType());
-                bytesOut.write(sdr.getRecipientServiceType());
-
-                bytesOut.write(rd);
+                bytesOut.write(sdr.encode());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

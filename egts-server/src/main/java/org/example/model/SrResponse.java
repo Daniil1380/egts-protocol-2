@@ -7,12 +7,21 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Arrays;
 
 @Data
 public class SrResponse implements BinaryData {
 
     private short confirmedRecordNumber;
     private byte recordStatus;
+
+    public SrResponse() {
+    }
+
+    public SrResponse(short confirmedRecordNumber, byte recordStatus) {
+        this.confirmedRecordNumber = confirmedRecordNumber;
+        this.recordStatus = recordStatus;
+    }
 
     @Override
     public BinaryData decode(byte[] content) {
@@ -31,7 +40,7 @@ public class SrResponse implements BinaryData {
     public byte[] encode() {
         ByteArrayOutputStream bytesOut = new ByteArrayOutputStream();
         try {
-            bytesOut.write(ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putInt(confirmedRecordNumber).array());
+            bytesOut.write(ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putShort(confirmedRecordNumber).array());
             bytesOut.write(recordStatus);
         } catch (IOException e) {
             throw new RuntimeException(e);

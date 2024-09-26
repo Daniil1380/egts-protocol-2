@@ -14,7 +14,7 @@ import java.util.List;
 @Data
 public class RecordDataSet implements BinaryData {
 
-    private List<RecordData> recordDataList = new ArrayList<>();
+    private List<BinaryData> recordDataList = new ArrayList<>();
 
     @Override
     public BinaryData decode(byte[] recDS) {
@@ -26,15 +26,16 @@ public class RecordDataSet implements BinaryData {
 
                 var rd = new RecordData();
                 var subrecordType = SubrecordType.fromId(in.read());
-                var subrecordLength = ByteBuffer.wrap(inputStream.readNBytes(2))
+                var subrecordLength = ByteBuffer.wrap(in.readNBytes(2))
                         .order(ByteOrder.LITTLE_ENDIAN).getShort();
                 var subrecordBytes = in.readNBytes(subrecordLength);
-                var subRecordData = new SrResponse();
-                subRecordData.decode(subrecordBytes);
 
-                subrecordType.ifPresent(rd::setSubrecordType);
+                BinaryData data = subrecordType == SubrecordType.RESULT_CODE ? new ResultCodeResponse() : new SrResponse();
+                data.decode(subrecordBytes);
+
+                rd.setSubrecordType(subrecordType);
                 rd.setSubrecordLength(subrecordLength);
-                rd.setSubrecordData(subRecordData);
+                rd.setSubrecordData(data);
                 recordDataList.add(rd);
             } catch (IOException e) {
                 throw new RuntimeException(e);
@@ -47,18 +48,8 @@ public class RecordDataSet implements BinaryData {
     public byte[] encode() {
         ByteArrayOutputStream bytesOut = new ByteArrayOutputStream();
         try {
-            for (RecordData rd : recordDataList) {
-                if (rd.getSubrecordType() == null) {
-                    rd.setSubrecordType(SubrecordType.POS_Data);
-                }
-                bytesOut.write(rd.getSubrecordType().getId());
-
-                if (rd.getSubrecordLength() == 0) {
-                    rd.setSubrecordLength((short) rd.getSubrecordData().length());
-                }
-
-                bytesOut.write(ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putShort(rd.getSubrecordLength()).array());
-                bytesOut.write(rd.getSubrecordData().encode());
+            for (BinaryData rd : recordDataList) {
+                bytesOut.write(rd.encode());
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
